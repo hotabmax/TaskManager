@@ -1,0 +1,182 @@
+databaseChangeLog:
+  - changeSet:
+      id: 1
+      author: hotabmax
+      changes:
+      - createTable:
+          tableName: userroles
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: name
+                type: varchar
+      - addUniqueConstraint:
+          tableName: userroles
+          columnNames: name
+      - createTable:
+          tableName: userdata
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: firstname
+                type: varchar
+            - column:
+                name: lastname
+                type: varchar
+            - column:
+                name: surname
+                type: varchar
+            - column:
+                name: email
+                type: varchar
+            - column:
+                name: password
+                type: varchar
+            - column:
+                name: userroleid
+                type: serial
+                constraints:
+                  nullable: false
+      - addUniqueConstraint:
+          tableName: userdata
+          columnNames: email
+      - addForeignKeyConstraint:
+          constraintName: dependency_user_of_userrole
+          baseColumnNames: userroleid
+          baseTableName: userdata
+          referencedColumnNames: id
+          referencedTableName: userroles
+      - createTable:
+          tableName: status
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: name
+                type: varchar
+      - createTable:
+          tableName: priority
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: name
+                type: varchar
+      - createTable:
+          tableName: tasks
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: name
+                type: varchar
+            - column:
+                name: description
+                type: varchar
+            - column:
+                name: statusid
+                type: serial
+                constraints:
+                  nullable: false
+            - column:
+                name: priorityid
+                type: serial
+                constraints:
+                  nullable: false
+            - column:
+                name: customerid
+                type: serial
+                constraints:
+                  nullable: false
+            - column:
+                name: executorid
+                type: serial
+                constraints:
+                  nullable: false
+      - addUniqueConstraint:
+          tableName: tasks
+          columnNames: name
+      - addForeignKeyConstraint:
+          constraintName: dependency_tasks_of_status
+          baseColumnNames: statusid
+          baseTableName: tasks
+          referencedColumnNames: id
+          referencedTableName: status
+      - addForeignKeyConstraint:
+          constraintName: dependency_tasks_of_priority
+          baseColumnNames: priorityid
+          baseTableName: tasks
+          referencedColumnNames: id
+          referencedTableName: priority
+      - addForeignKeyConstraint:
+          constraintName: dependency_tasks_of_customer
+          baseColumnNames: customerid
+          baseTableName: tasks
+          referencedColumnNames: id
+          referencedTableName: userdata
+      - addForeignKeyConstraint:
+          constraintName: dependency_tasks_of_executor
+          baseColumnNames: executorid
+          baseTableName: tasks
+          referencedColumnNames: id
+          referencedTableName: userdata
+      - createTable:
+          tableName: comments
+          columns:
+            - column:
+                name: id
+                type: serial
+                constraints:
+                  primaryKey: true
+                  nullable: false
+            - column:
+                name: firstname
+                type: varchar
+            - column:
+                name: lastname
+                type: varchar
+            - column:
+                name: surname
+                type: varchar
+            - column:
+                name: email
+                type: varchar
+            - column:
+                name: comment
+                type: varchar
+            - column:
+                name: date
+                type: varchar
+            - column:
+                name: taskid
+                type: serial
+                constraints:
+                  nullable: false
+      - addForeignKeyConstraint:
+          constraintName: dependency_comments_of_tasks
+          baseColumnNames: taskid
+          baseTableName: comments
+          referencedColumnNames: id
+          referencedTableName: tasks
