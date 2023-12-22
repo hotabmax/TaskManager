@@ -1,33 +1,36 @@
 package com.hotabmax.taskmanager.config;
 
+import com.hotabmax.taskmanager.exception_http.CustomAccessDeniedHandler;
+import com.hotabmax.taskmanager.exception_http.CustomAuthenticationEntryPoint;
 import com.hotabmax.taskmanager.services.MyUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import static org.springframework.security.config.Customizer.withDefaults;
 
 
 @EnableWebSecurity
 @Configuration
 public class SecurityConfig {
 
-    @Autowired
-    private MyUserDetailsService myUserDetailsService;
-    @Autowired
-    private JwtRequestFilter jwtRequestFilter;
+
+    private final MyUserDetailsService myUserDetailsService;
+    private final JwtRequestFilter jwtRequestFilter;
+
+    public SecurityConfig(MyUserDetailsService myUserDetailsService, JwtRequestFilter jwtRequestFilter) {
+        this.myUserDetailsService = myUserDetailsService;
+        this.jwtRequestFilter = jwtRequestFilter;
+    }
 
     @Bean
     public PasswordEncoder encoder() {
@@ -36,24 +39,37 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityCustomerFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf().disable()
-                .cors().disable()
-                .authorizeHttpRequests(request -> request
+        http.csrf().disable().cors().disable();
+
+        http.authorizeHttpRequests(request -> request
                         .requestMatchers("/customer/**").hasRole("CUSTOMER")
                         .requestMatchers("/executor/**").hasRole("EXECUTOR")
-                        .requestMatchers("/swagger-ui/**").authenticated()
                         .anyRequest().permitAll()
                 )
-                .formLogin(withDefaults())
-                .logout().logoutUrl("/exit")
-                .and().addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+                .exceptionHandling()
+                .authenticationEntryPoint(authenticationEntryPoint())
+                .accessDeniedHandler(accessDeniedHandler());
+
+                http.logout().logoutUrl("/exit");
+
+                http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception{
         return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint(){
+        return new CustomAuthenticationEntryPoint();
+    }
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return new CustomAccessDeniedHandler();
     }
 
     @Bean

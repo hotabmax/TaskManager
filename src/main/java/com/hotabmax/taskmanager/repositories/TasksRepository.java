@@ -1,6 +1,6 @@
 package com.hotabmax.taskmanager.repositories;
 
-import com.hotabmax.taskmanager.models.Tasks;
+import com.hotabmax.taskmanager.entities.Tasks;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -9,15 +9,19 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface TasksRepository extends JpaRepository<Tasks, Long> {
-    @Query(value = "select id, name, description, statusid, priorityid, customerid, executorid from tasks where customerid = :customerid",
-            nativeQuery = true)
-    List<Tasks> findByCustomerId(int customerid);
 
-    @Query(value = "select id, name, description, statusid, priorityid, customerid, executorid from tasks where executorid = :executorid",
+    @Query(value = "select * from tasks offset :myOffset limit :myLimit",
             nativeQuery = true)
-    List<Tasks> findByExecutorId(int executorid);
+    List<Tasks> findAll(int myOffset, int myLimit);
+    @Query(value = "select * from tasks where customerid = :customerid offset :myOffset limit :myLimit",
+            nativeQuery = true)
+    List<Tasks> findByCustomerId(int myOffset, int myLimit, int customerid);
 
-    @Query(value = "select id, name, description, statusid, priorityid, customerid, executorid from tasks where name = :name",
+    @Query(value = "select * from tasks where executorid = :executorid offset :myOffset limit :myLimit",
+            nativeQuery = true)
+    List<Tasks> findByExecutorId(int myOffset, int myLimit, int executorid);
+
+    @Query(value = "select * from tasks where name = :name",
             nativeQuery = true)
     Tasks findByName(String name);
 

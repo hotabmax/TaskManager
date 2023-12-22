@@ -1,6 +1,6 @@
 package com.hotabmax.taskmanager.repositories;
 
-import com.hotabmax.taskmanager.models.Comments;
+import com.hotabmax.taskmanager.entities.Comments;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -21,7 +21,7 @@ public interface CommentsRepository extends JpaRepository<Comments, Long> {
             nativeQuery = true)
     void deleteByTaskId(int taskid);
 
-    @Query(value = "select id, firstname, lastname, surname, email, comment, taskid from comments where taskid = :taskid",
+    @Query(value = "select * from comments where taskid = :taskid",
             nativeQuery = true)
     List <Comments> findByTaskId(int taskid);
 }

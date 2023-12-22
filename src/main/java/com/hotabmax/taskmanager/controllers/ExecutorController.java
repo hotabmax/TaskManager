@@ -1,137 +1,101 @@
 package com.hotabmax.taskmanager.controllers;
 
 import com.google.gson.Gson;
-import com.hotabmax.taskmanager.dtos.*;
-import com.hotabmax.taskmanager.models.Comments;
-import com.hotabmax.taskmanager.models.Priority;
-import com.hotabmax.taskmanager.models.Tasks;
-import com.hotabmax.taskmanager.models.User;
+import com.hotabmax.taskmanager.dtos_database.*;
+import com.hotabmax.taskmanager.dtos_database.transactions.ChangeTaskStatusRequest;
+import com.hotabmax.taskmanager.dtos_error.AppError;
+import com.hotabmax.taskmanager.exceptions_database.*;
+import com.hotabmax.taskmanager.entities.*;
 import com.hotabmax.taskmanager.services.*;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.ArrayList;
 import java.util.List;
 
-@Controller
+@RestController
 public class ExecutorController {
     private Gson gson = new Gson();
 
-    @Autowired
-    private TasksService tasksService;
-    @Autowired
-    private CommentsService commentsService;
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private StatusService statusService;
-    @Autowired
-    private PriorityService priorityService;
+    private final TasksService tasksService;
+    private final CommentsService commentsService;
+    private final StatusService statusService;
+    private final PriorityService priorityService;
+
+    public ExecutorController(TasksService tasksService, CommentsService commentsService,
+                              StatusService statusService, PriorityService priorityService) {
+        this.tasksService = tasksService;
+        this.commentsService = commentsService;
+        this.statusService = statusService;
+        this.priorityService = priorityService;
+    }
 
 
     @PostMapping("/executor/findExecutorTasks")
     @ResponseBody
     @Operation(summary = "Find tasks of executor", responses = {
-            @ApiResponse(responseCode = "200", description = "Response JSON object if success"),
-            @ApiResponse(responseCode = "404", description = "No tasks created in data base")
+            @ApiResponse(responseCode = "200", content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = TaskResponse.class)))),
+            @ApiResponse(responseCode = "404", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppError.class)), description = "'You field 'task' not found in the database' or 'This executor no have tasks'")
     })
-    public ResponseEntity<?> findExecutorTasks(Principal principal){
-        List<Tasks> tasks = tasksService.findByExecutorId((userService.findByEmail(principal.getName()).getId()));
-        List<TaskResponse> taskResponses = new ArrayList<>();
-        if (!tasks.isEmpty()){
-            for(Tasks t : tasks){
-                taskResponses.add(new TaskResponse(t.getName(), t.getDescription(),
-                        statusService.findById(t.getStatusid()).getName(), priorityService.findById(t.getPriorityid()).getName(),
-                        userService.findById(t.getCustomerid()).getEmail(), userService.findById(t.getExecutorid()).getEmail()));
-            }
-            return ResponseEntity.ok(taskResponses);
-        } else return new ResponseEntity<>(new AppError(HttpStatus.NOT_FOUND.value(),
-                                    "No tasks created"),
-                                                HttpStatus.NOT_FOUND);
+    public List<TaskResponse> findExecutorTasks(@RequestParam int page, @RequestParam int size, Principal principal) throws TasksNotFoundException {
+        return tasksService.findByExecutorEmail(page, size, principal.getName());
+    }
+
+    @PostMapping("/executor/findStatusList")
+    @ResponseBody
+    @Operation(summary = "Find statuses", responses = {
+            @ApiResponse(responseCode = "200", content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = StatusResponse.class)))),
+            @ApiResponse(responseCode = "404", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppError.class)), description = "Statuses not found in the database")
+    })
+    public List<StatusResponse> findStatusList() throws StatusesNotFoundExceprion {
+        return statusService.findAll();
+    }
+
+    @PostMapping("/executor/findPriorityList")
+    @ResponseBody
+    @Operation(summary = "Find priorities", responses = {
+            @ApiResponse(responseCode = "200", content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = PriorityResponse.class)))),
+            @ApiResponse(responseCode = "404", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppError.class)), description = "Priority not found in the database")
+    })
+    public List<PriorityResponse> findPriorityList() throws PrioritiesNotFoundException {
+        return priorityService.findAll();
     }
 
 
     @PostMapping("/executor/changeStatusOfTask")
     @ResponseBody
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Change stasus in task object. Need field 'name' and 'status' in JSON object.", required = true, content = @Content(schema = @Schema(implementation = ChangeTaskStatusRequest.class)))
     @Operation(summary = "Change stasus of task", responses = {
-                    @ApiResponse(responseCode = "200", description = "Response 'Great' if success"),
-                    @ApiResponse(responseCode = "403", description = "You can't delete task another customer")
-            })
-    public ResponseEntity<?> changeStatusOfTask(@io.swagger.v3.oas.annotations.parameters.RequestBody(
-                                    description = "Change stasus in task object. Need field 'name' and 'status' in JSON object.",
-                                    required = true, content = @Content(
-                                    schema = @Schema(implementation = TaskRequest.class)))@RequestBody String data, Principal principal){
-        TaskRequest taksRequest = gson.fromJson(data, TaskRequest.class);
-        Tasks DBtask = tasksService.findByName(taksRequest.getName());
-        int statusid = statusService.findByName(taksRequest.getStatus()).getId();
-        if (DBtask.getExecutorid().equals(userService.findByEmail(principal.getName()).getId())){
-            tasksService.tranzactionEditStatus(taksRequest.getName(), statusid);
-            return ResponseEntity.ok("Great");
-        } else return new ResponseEntity<>(new AppError(HttpStatus.FORBIDDEN.value(),
-                                                "You can't delete task another customer"),
-                                                            HttpStatus.FORBIDDEN);
+            @ApiResponse(responseCode = "404", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppError.class)), description = "You field '{field name}' not found in the database")
+    })
+    public void changeStatusOfTask(@RequestBody String data) throws FieldNotFoundException {
+        tasksService.tranzactionEditStatus(gson.fromJson(data, ChangeTaskStatusRequest.class));
     }
 
 
     @PostMapping("/executor/createComment")
     @ResponseBody
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Create executor comment object. Need fields 'comment' and 'taskName' in JSON object", required = true, content = @Content(schema = @Schema(implementation = CreateCommentRequest.class)))
     @Operation(summary = "Create executor comment", responses = {
-                    @ApiResponse(responseCode = "200", description = "Response 'Great' if success"),
-                    @ApiResponse(responseCode = "422", description = "The server was unable to process the request")
-            })
-    public ResponseEntity<?> createComment(@io.swagger.v3.oas.annotations.parameters.RequestBody(
-                                description = "Create executor comment object. Need fields 'comment' and 'taskName' in JSON object",
-                                required = true,
-                                content = @Content(
-                                schema = @Schema(implementation = CommentRequest.class)))@RequestBody String data, Principal principal){
-        CommentRequest commentRequest = gson.fromJson(data, CommentRequest.class);
-        int taskid = tasksService.findByName(commentRequest.getTaskName()).getId();
-        int amount = commentsService.findByTaskId(taskid).size();
-        User user = userService.findByEmail(principal.getName());
-        commentsService.createComment(new Comments(
-                user.getLastname(), user.getFirstname(),
-                user.getSurname(), user.getEmail(),
-                commentRequest.getComment(), taskid));
-        if (commentsService.findAll().size() > amount){
-            return ResponseEntity.ok("Great");
-        } else return new ResponseEntity<>(new AppError(HttpStatus.UNPROCESSABLE_ENTITY.value(),
-                                            "The server was unable to process the request"),
-                                                        HttpStatus.UNPROCESSABLE_ENTITY);
+            @ApiResponse(responseCode = "404", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppError.class)), description = "You field 'task' not found in the database")
+    })
+    public void createComment(@RequestBody String data, Principal principal){
+        commentsService.createComment(gson.fromJson(data, CreateCommentRequest.class), principal.getName());
     }
 
 
     @PostMapping("/executor/findTaskComments")
     @ResponseBody
-    @Operation(summary = "Find task comments", responses = {
-                    @ApiResponse(responseCode = "200", description = "Response JSON object if success"),
-                    @ApiResponse(responseCode = "404", description = "No tasks created in data base")
-            })
-    public ResponseEntity<?> findTaksComments(@io.swagger.v3.oas.annotations.parameters.RequestBody(
-                                    description = "Find task comments objects. Need only field 'taskName' in JSON object",
-                                    required = true,
-                                    content = @Content(
-                                    schema = @Schema(implementation = CommentRequest.class)))@RequestBody String data){
-        CommentRequest commentRequest = gson.fromJson(data, CommentRequest.class);
-        List<Comments> comment = commentsService.findByTaskId(tasksService.findByName(commentRequest.getTaskName()).getId());
-        List<CommentResponse> commentResponses = new ArrayList<>();
-        if (!comment.isEmpty()){
-            for(Comments c : comment){
-                commentResponses.add(new CommentResponse(c.getLastname(),c.getFirstname(), c.getSurname(), c.getEmail(), c.getComment(),
-                        tasksService.findById(c.getTaskid()).getName()));
-            }
-            return ResponseEntity.ok(commentResponses);
-        } else return new ResponseEntity<>(new AppError(HttpStatus.NOT_FOUND.value(),
-                                                "No tasks created"),
-                                                            HttpStatus.NOT_FOUND);
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "Find task comments objects. Need only field 'taskName' in JSON object", required = true, content = @Content(schema = @Schema(implementation = CommentRequest.class)))
+    @Operation(summary = "Find all task comments", responses = {
+            @ApiResponse(responseCode = "200", content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = CommentResponse.class)))),
+            @ApiResponse(responseCode = "404", content = @Content(mediaType = "application/json", schema = @Schema(implementation = AppError.class)), description = "'You field 'task' not found in the database' or 'This task no have comments'")
+    })
+    public List<CommentResponse> findTaksComments(@RequestBody String data) throws CommentsNotFoundException {
+        return commentsService.findByTaskName(gson.fromJson(data, CommentRequest.class).getTaskName());
     }
 }

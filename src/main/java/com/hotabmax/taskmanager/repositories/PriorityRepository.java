@@ -1,13 +1,11 @@
 package com.hotabmax.taskmanager.repositories;
 
 
-import com.hotabmax.taskmanager.models.Priority;
+import com.hotabmax.taskmanager.entities.Priority;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-
-import java.util.List;
 
 public interface PriorityRepository extends JpaRepository<Priority, Long> {
     @Modifying

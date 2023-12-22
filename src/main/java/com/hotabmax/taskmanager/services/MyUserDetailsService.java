@@ -1,8 +1,8 @@
 package com.hotabmax.taskmanager.services;
 
-import com.hotabmax.taskmanager.models.User;
-import com.hotabmax.taskmanager.models.UserRoles;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.hotabmax.taskmanager.exceptions_database.FieldNotFoundException;
+import com.hotabmax.taskmanager.entities.User;
+import com.hotabmax.taskmanager.entities.UserRoles;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,13 +16,23 @@ import java.util.Set;
 @Service
 public class MyUserDetailsService implements UserDetailsService {
 
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private UserRolesService userRolesService;
+
+    private final UserService userService;
+    private final UserRolesService userRolesService;
+
+    public MyUserDetailsService(UserService userService, UserRolesService userRolesService) {
+        this.userService = userService;
+        this.userRolesService = userRolesService;
+    }
+
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userService.findByEmail(email);
+        User user = null;
+        try {
+            user = userService.findByEmail(email);
+        } catch (FieldNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }

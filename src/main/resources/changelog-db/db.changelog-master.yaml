@@ -167,9 +167,6 @@ databaseChangeLog:
                 name: comment
                 type: varchar
             - column:
-                name: date
-                type: varchar
-            - column:
                 name: taskid
                 type: serial
                 constraints:

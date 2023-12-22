@@ -1,6 +1,6 @@
 package com.hotabmax.taskmanager.repositories;
 
-import com.hotabmax.taskmanager.models.User;
+import com.hotabmax.taskmanager.entities.User;
 import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -10,11 +10,11 @@ import java.util.List;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @Query(value = "select id, firstname, lastname, surname, email, password, userroleid from userdata where userroleid = :userroleid",
+    @Query(value = "select * from userdata where userroleid = :userroleid",
             nativeQuery = true)
     List<User> findByRoleId(int userroleid);
 
-    @Query(value = "select id, firstname, lastname, surname, email, password, userroleid from userdata where email = :email",
+    @Query(value = "select * from userdata where email = :email",
             nativeQuery = true)
     User findByEmail(String email);
 
